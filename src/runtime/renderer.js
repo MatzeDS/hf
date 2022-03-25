@@ -888,28 +888,27 @@ function getSequence(arr) {
             if (arr[j] < arrI) {
                 p[i] = j;
                 result.push(i);
-                continue;
-            }
+            } else {
+                u = 0;
+                v = result.length - 1;
 
-            u = 0;
-            v = result.length - 1;
+                while (u < v) {
+                    c = (u + v) >> 1;
 
-            while (u < v) {
-                c = (u + v) >> 1;
-
-                if (arr[result[c]] < arrI) {
-                    u = c + 1;
-                } else {
-                    v = c;
-                }
-            }
-
-            if (arrI < arr[result[u]]) {
-                if (u > 0) {
-                    p[i] = result[u - 1];
+                    if (arr[result[c]] < arrI) {
+                        u = c + 1;
+                    } else {
+                        v = c;
+                    }
                 }
 
-                result[u] = i;
+                if (arrI < arr[result[u]]) {
+                    if (u > 0) {
+                        p[i] = result[u - 1];
+                    }
+
+                    result[u] = i;
+                }
             }
         }
     }

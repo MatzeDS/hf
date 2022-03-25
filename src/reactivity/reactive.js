@@ -32,6 +32,7 @@ export const ReactiveFlags = {
     SKIP: "__skip",
     IS_REACTIVE: "__isReactive",
     IS_READONLY: "__isReadonly",
+    IS_SHALLOW: "__isShallow",
     RAW: "__raw"
 };
 
@@ -81,10 +82,10 @@ function getTargetType(value) {
  * Erzeugt ein reaktives Objekt aus dem übergebenen Objekt
  *
  * @param {Object} target - Das Objekt, welches reaktiv werden soll
- * @returns {Proxy} - Das reaktive Proxy-Objekt
+ * @returns {Proxy|*} - Das reaktive Proxy-Objekt
  */
 export function reactive(target) {
-    if (target && target[ReactiveFlags.IS_READONLY]) {
+    if (isReadonly(target)) {
         return target;
     }
 
@@ -193,7 +194,7 @@ function createReactiveObject(
 }
 
 /**
- * Prüft ob der übergebene Wert ein reaktives Objekt ist
+ * Prüft, ob der übergebene Wert ein reaktives Objekt ist
  *
  * @param {*} value - Der zu prüfende Wert
  * @returns {boolean} Ist es ein reaktives Objekt
@@ -207,7 +208,7 @@ export function isReactive(value) {
 }
 
 /**
- * Prüft ob der übergebene Wert ein schreibgeschütztes, reaktives Objekt ist.
+ * Prüft, ob der übergebene Wert ein schreibgeschütztes, reaktives Objekt ist.
  *
  * @param {*} value - Der zu prüfende Wert
  * @returns {boolean}  Ist es ein schreibgeschütztes, reaktives Objekt
@@ -217,7 +218,18 @@ export function isReadonly(value) {
 }
 
 /**
- * Prüft ob der übergebene Wert ein reaktives Proxy-Objekt ist
+ * Prüft, ob der übergebene Wert ein schreibgeschütztes, reaktives Objekt ist,
+ * bei dem nur die erste Ebene schreibgeschützt ist.
+ *
+ * @param {*} value - Der zu prüfende Wert
+ * @returns {boolean} Ist es ein schreibgeschütztes, reaktives Objekt
+ */
+export function isShallow(value) {
+    return !!(value && value[ReactiveFlags.IS_SHALLOW]);
+}
+
+/**
+ * Prüft, ob der übergebene Wert ein reaktives Proxy-Objekt ist
  *
  * @param {*} value - Der zu prüfende Wert
  * @returns {boolean} Ist es ein reaktives Objekt

@@ -45,11 +45,19 @@ const hasOwnProperty = Object.prototype.hasOwnProperty;
 
 export const hasOwn = (value, key) => hasOwnProperty.call(value, key);
 
+export const removeFromArray = (arr, el) => {
+    const idx = arr.indexOf(el);
+
+    if (idx >= 0) {
+        arr.splice(idx, 1);
+    }
+};
+
 /**
- *
- * @param {string[]} list
- * @param {boolean} [expectsLowerCase]
- * @returns {function(string): boolean}
+ * Erzeugt eine Funktion um zu prüfen, ob ein Wert in der übergebenen List vorhanden ist.
+ * @param {string[]|symbol[]} list - Eine Liste von Werten und Symbolen
+ * @param {boolean} [expectsLowerCase] - Bei einer String-Liste kann können alle übergebenen Werte unabhängig von Groß- und Kleinschreibung überprüft werden.
+ * @returns {function(string|symbol): boolean} - Die Prüffunktion
  */
 export function makeMap(list, expectsLowerCase) {
     const map = list.reduce((map, el) => {
@@ -59,18 +67,6 @@ export function makeMap(list, expectsLowerCase) {
     }, Object.create(null));
 
     return expectsLowerCase ? val => !!map[val.toLowerCase()] : val => !!map[val];
-}
-
-/**
- *
- * @param {*} value
- * @param {*} prototype
- * @returns {boolean}
- */
-export function isPrototypeOf(value, prototype) {
-    const p = Object.getPrototypeOf(value);
-
-    return p ? p === prototype || isPrototypeOf(p, prototype) : false;
 }
 
 /**

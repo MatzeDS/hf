@@ -27,7 +27,20 @@ let currentFlushPromise = null;
 let currentPreFlushParentJob = null;
 
 /**
- * Findet den Index des Jobs mit der übergebenen ID in der Warteschlange.
+ * Nachdem die aktuellen Jobs abgearbeitet sind, wird die Funktion ausgeführt.
+ * Oder man nutzt das zurück gelieferte Promise um mit .then() eine Funktion anzuhängen.
+ * @param {Function} [fn] - Die Funktion
+ * @returns {Promise}
+ */
+export function nextTick(fn) {
+    const p = currentFlushPromise || resolvedPromise;
+
+    return fn ? p.then(fn) : p;
+}
+
+/**
+ * Findet die geeignete Position für die übergebene Job-ID, um die Reihenfolge der aufsteigenden Job-IDs beizubehalten.
+ * Mithilfe der binären Suche wird diese Position ermittelt.
  * @param {number} id - Die Job-ID
  * @returns {number} - Index des Jobs innerhalb der Warteschlange
  */
@@ -54,6 +67,12 @@ function findInsertionIndex(id) {
  * @param {Job} job - Der Job
  */
 export function queueJob(job) {
+    /*
+     * Prüft, ob der Job schon in der Queue ist, wenn es der aktuelle Job ist,
+     * muss der Job Rekursionen erlauben um, in die Queue aufgenommen zu werden.
+     * Der Index enthält im Normalfall die Position des aktuellen Jobs,
+     * welcher bei der Suche ausgeschlossen wird (includes wird der Index übergeben).
+     */
     if (
         (queue.length === 0 ||
             !queue.includes(
@@ -72,7 +91,7 @@ export function queueJob(job) {
 }
 
 /**
- * Die Warteschlange abarbeiten.
+ * Die aktuelle Warteschlange abarbeiten, falls der Scheduler im Moment nicht beschäftigt ist.
  */
 function queueFlush() {
     if (!isFlushing && !isFlushPending) {
@@ -86,10 +105,10 @@ function queueFlush() {
  * @param {Job} job - Der Job
  */
 export function invalidateJob(job) {
-    const i = queue.indexOf(job);
+    const idx = queue.indexOf(job);
 
-    if (i > flushIndex) {
-        queue.splice(i, 1);
+    if (idx > flushIndex) {
+        queue.splice(idx, 1);
     }
 }
 
@@ -115,7 +134,7 @@ function queueCallback(cb, activeQueue, pendingQueue, index) {
 }
 
 /**
- * Füge einen Callback zu den vor der Warteschlange auszuführenden Callbacks hinzu.
+ * Füge einen Callback zu den vor den aktuell auszuführenden Callbacks hinzu.
  * @param {Job} cb - Der Callback
  */
 export function queuePreFlushCallback(cb) {

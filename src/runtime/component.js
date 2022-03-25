@@ -18,7 +18,6 @@ import {
     isArray,
     hasOwn,
     assign,
-    isPrototypeOf,
     EMPTY_OBJ
 } from "../shared/utils.js";
 
@@ -80,7 +79,8 @@ const UNMOUNTED_HOOK = "_um";
 const FINALIZED = "_fin";
 
 let uid = 0;
-let currentInstance = null;
+
+export let currentInstance = null;
 
 /**
  * Setzt die aktuelle Instance der Web-Komponente auf die Übergebene.
@@ -257,6 +257,7 @@ function initComponent(instance, parent) {
     instance._parent = parent;
     instance._setupState = null;
     instance._scope = effectScope();
+    instance._effect = null;
     instance._propsOptions = instance.constructor._propsOptions;
     instance._subTree = null;
 
@@ -449,13 +450,13 @@ function setupComponent(instance) {
 function setupRenderer(instance, container, anchor) {
     const updateFn = () => {
         if (!instance._isMounted) {
-            effect.allowRecurse = false;
+            toggleRecurse(instance, false);
 
             if (instance[BEFORE_MOUNT_HOOK]) {
                 invokeArrayFns(instance[BEFORE_MOUNT_HOOK]);
             }
 
-            effect.allowRecurse = true;
+            toggleRecurse(instance, true);
 
             instance.slots = instance.vnode?.slots || {};
 
@@ -475,7 +476,7 @@ function setupRenderer(instance, container, anchor) {
 
             instance._isMounted = true;
         } else {
-            effect.allowRecurse = false;
+            toggleRecurse(instance, false);
 
             if (instance._next) {
                 const prevProps = instance.vnode.props;
@@ -489,7 +490,7 @@ function setupRenderer(instance, container, anchor) {
                 invokeArrayFns(instance[BEFORE_UPDATE_HOOK]);
             }
 
-            effect.allowRecurse = true;
+            toggleRecurse(instance, true);
 
             const prevTree = instance._subTree;
             const subTree = instance._subTree = renderComponentTree(instance);
@@ -508,13 +509,27 @@ function setupRenderer(instance, container, anchor) {
         }
     };
 
-    const effect = new ReactiveEffect(updateFn, () => queueJob(instance.update), instance._scope);
+    const effect = (instance._effect = new ReactiveEffect(
+        updateFn,
+        () => queueJob(instance.update),
+        instance._scope
+    ));
     const update = (instance.update = effect.run.bind(effect));
 
     update.id = instance._uid;
-    effect.allowRecurse = update.allowRecurse = true;
+    toggleRecurse(instance, true);
 
     update();
+}
+
+/**
+ * Erlaubt es, die Rekursion für den Effect und den dazu gehörenden Job an oder aus zu schalten.
+ * @param {ReactiveEffect} _effect - Der reaktive Effect der Instance
+ * @param {Job} update - Die Update-Funktion der Instance
+ * @param {boolean} allowed - Erlaubt oder verbietet die Rekursion
+ */
+function toggleRecurse({ _effect, update }, allowed) {
+    _effect.allowRecurse = update.allowRecurse = allowed;
 }
 
 /**
@@ -638,7 +653,7 @@ export function registerComponent(component) {
 
         componentRegister.set(tag, component);
 
-        if (isPrototypeOf(component, HTMLElement)) {
+        if (HTMLElement.prototype.isPrototypeOf(component)) {
             customElements.define(tag, component);
         }
     }

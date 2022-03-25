@@ -53,7 +53,7 @@ export function isRef(r) {
  * @returns {Reference} Die erzeugte Referenz
  */
 export function ref(value) {
-    return createRef(value);
+    return createRef(value, false);
 }
 
 /**
@@ -73,7 +73,7 @@ export function shallowRef(value) {
  * @param {boolean} shallow - Erzeuge eine flache Referenz
  * @returns {Reference} Die erzeugte Referenz
  */
-function createRef(rawValue, shallow = false) {
+function createRef(rawValue, shallow) {
     if (isRef(rawValue)) {
         return rawValue;
     }
@@ -100,7 +100,7 @@ class Reference {
          * @type {boolean}
          * @private
          */
-        this._shallow = shallow;
+        this.__isShallow = shallow;
 
         /**
          *
@@ -130,11 +130,11 @@ class Reference {
     }
 
     set value(newVal) {
-        newVal = this._shallow ? newVal : toRaw(newVal);
+        newVal = this.__isShallow ? newVal : toRaw(newVal);
 
         if (hasChanged(newVal, this._rawValue)) {
             this._rawValue = newVal;
-            this._value = this._shallow ? newVal : toReactive(newVal);
+            this._value = this.__isShallow ? newVal : toReactive(newVal);
             triggerRefValue(this);
         }
     }
@@ -249,15 +249,19 @@ class ObjectReference {
      *
      * @param {Object} object
      * @param {string} key
+     * @param {*} [defaultValue]
      */
-    constructor(object, key) {
+    constructor(object, key, defaultValue) {
         this.__isRef = true;
         this._object = object;
         this._key = key;
+        this._defaultValue = defaultValue;
     }
 
     get value() {
-        return this._object[this._key];
+        const val = this._object[this._key];
+
+        return val === undefined ? this._defaultValue : val;
     }
 
     set value(newVal) {
@@ -269,10 +273,11 @@ class ObjectReference {
  *
  * @param {Object} object
  * @param {string} key
+ * @param {*} [defaultValue]
  * @returns {Reference}
  */
-export function toRef(object, key) {
+export function toRef(object, key, defaultValue) {
     const val = object[key];
 
-    return isRef(val) ? val : new ObjectReference(object, key);
+    return isRef(val) ? val : new ObjectReference(object, key, defaultValue);
 }

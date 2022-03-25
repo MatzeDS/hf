@@ -1,6 +1,10 @@
-import { ReactiveEffect } from "./effect.js";
-import { isRef } from "./ref.js";
-import { isReactive, ReactiveFlags } from "./reactive.js";
+import {
+    isRef,
+    isReactive,
+    isShallow,
+    ReactiveFlags,
+    ReactiveEffect
+} from "../reactivity/index.js";
 import {
     EMPTY_OBJ,
     hasChanged,
@@ -10,15 +14,24 @@ import {
     isObject,
     isSet,
     isPlainObject,
+    removeFromArray,
     NOOP
 } from "../shared/utils.js";
+import {
+    queuePreFlushCallback,
+    queuePostFlushCallback
+} from "./scheduler.js";
+import {
+    currentInstance
+} from "./component.js";
 
 const INITIAL_WATCHER_VALUE = {};
 
 /**
  * @typedef {Object} WatchOptions
- * @property {boolean} [immediate] - Die Callback Funktion wird direkt aufgerufen
+ * @property {boolean} [immediate] - Die Callback-Funktion wird direkt aufgerufen
  * @property {boolean} [deep] - Bei reaktiven Objekten wird auch auf Änderungen in der Tiefe reagiert
+ * @property {"pre"|"post"|"sync"} [flush] -
  */
 
 /**
@@ -34,11 +47,11 @@ const INITIAL_WATCHER_VALUE = {};
  */
 
 /**
- * Überwacht eine oder Methere Variablen,
- * bei jeder Veränderung wird die Callback Funktion ausgeführt
+ * Überwacht eine oder mehrere Variablen,
+ * bei jeder Veränderung wird die Callback-Funktion ausgeführt
  *
- * @param {WatchSource} source - Die zu überwachenden Vaiablen
- * @param {function(value: *, oldValue: *, onInvalidate: InvalidateCallback): void} cb - Die Callback Funktion, welche bei Änderungen aufgerufen wird
+ * @param {WatchSource} source - Die zu überwachenden Variablen
+ * @param {function(value: *, oldValue: *, onInvalidate: InvalidateCallback): void} cb - Die Callback-Funktion, welche bei Änderungen aufgerufen wird
  * @param {WatchOptions} [options] - Optionen für den Watcher
  * @returns {function(): void} Die Funkion beendet die Überwachung der Variablen
  */
@@ -47,14 +60,15 @@ export function watch(source, cb, options) {
 }
 
 /**
- * Alle aufgerufenen Variablen in der Funktion werden Überwacht,
+ * Alle aufgerufenen Variablen in der Funktion werden überwacht,
  * wenn sich eine Variable ändert wird die Funktion erneut aufgerufen
  *
  * @param {WatchEffect} effect - Der Inhalt dieser Funkion wird überwacht
+ * @param {WatchOptions} [options] - Optionen für den Watcher
  * @returns {function(): void} Die Funktion beendet die Überwachung
  */
-export function watchEffect(effect) {
-    return doWatch(effect);
+export function watchEffect(effect, options) {
+    return doWatch(effect, null, options);
 }
 
 /**
@@ -64,16 +78,18 @@ export function watchEffect(effect) {
  * @param {function(value: *, oldValue: *, onInvalidate: InvalidateCallback): void} [cb] - Die Callback Funktion, welche bei Änderungen aufgerufen wird
  * @param {boolean} [immediate] - Die Callback Funktion wird direkt aufgerufen
  * @param {boolean} [deep] - Bei reaktiven Objekten wird auch auf Änderungen in der Tiefe reagiert
+ * @param {"pre"|"post"|"sync"} [flush] -
  * @returns {function(): void} Die Funkion beendet die Überwachung der Variablen
  */
-function doWatch(source, cb, { immediate, deep } = EMPTY_OBJ) {
+function doWatch(source, cb, { immediate, deep, flush } = EMPTY_OBJ) {
+    const instance = currentInstance;
     let getter;
     let forceTrigger = false;
     let isMultiSource = false;
 
     if (isRef(source)) {
         getter = () => source.value;
-        forceTrigger = source._shallow;
+        forceTrigger = isShallow(source);
     } else if (isReactive(source)) {
         getter = () => source;
         deep = true;
@@ -96,11 +112,15 @@ function doWatch(source, cb, { immediate, deep } = EMPTY_OBJ) {
             getter = () => source();
         } else {
             getter = () => {
+                if (instance && instance._isUnmounted) {
+                    return;
+                }
+
                 if (cleanup) {
                     cleanup();
                 }
 
-                return source(onInvalidate);
+                return source(onCleanup);
             };
         }
     } else {
@@ -114,7 +134,7 @@ function doWatch(source, cb, { immediate, deep } = EMPTY_OBJ) {
 
     let cleanup;
 
-    const onInvalidate = fn => {
+    const onCleanup = fn => {
         cleanup = effect.onStop = () => fn();
     };
 
@@ -138,7 +158,7 @@ function doWatch(source, cb, { immediate, deep } = EMPTY_OBJ) {
                     cleanup();
                 }
 
-                cb(newValue, oldValue === INITIAL_WATCHER_VALUE ? undefined : oldValue, onInvalidate);
+                cb(newValue, oldValue === INITIAL_WATCHER_VALUE ? undefined : oldValue, onCleanup);
                 oldValue = newValue;
             }
         } else {
@@ -148,7 +168,23 @@ function doWatch(source, cb, { immediate, deep } = EMPTY_OBJ) {
 
     job.allowRecurse = !!cb;
 
-    const effect = new ReactiveEffect(getter, job);
+    let scheduler;
+
+    if (flush === "sync") {
+        scheduler = job;
+    } else if (flush === "post") {
+        scheduler = () => queuePostFlushCallback(job);
+    } else {
+        scheduler = () => {
+            if (!instance || instance._isMounted) {
+                queuePreFlushCallback(job);
+            } else {
+                job();
+            }
+        };
+    }
+
+    const effect = new ReactiveEffect(getter, scheduler);
 
     if (cb) {
         if (immediate) {
@@ -156,22 +192,28 @@ function doWatch(source, cb, { immediate, deep } = EMPTY_OBJ) {
         } else {
             oldValue = effect.run();
         }
+    } else if (flush === "post") {
+        queuePostFlushCallback(effect.run.bind(effect));
     } else {
         effect.run();
     }
 
     return () => {
         effect.stop();
+
+        if (instance && instance._scope) {
+            removeFromArray(instance._scope.effects, effect);
+        }
     };
 }
 
 /**
- * Durchläuft alle Source-Daten um die Variablen aufzurufen,
+ * Durchläuft alle Source-Daten, um die Variablen aufzurufen,
  * damit auf Änderungen dieser reagiert werden kann.
  *
  * @param {*} value - Source, deren Inhalt aufgerufen wird
  * @param {Set} [seen] - Um zu verhindern, dass man in eine Schleife kommt, werden alle durchsuchten Sourcen gespeichert
- * @returns {*} Die Source selbst wird zurück gegeben
+ * @returns {*} Die Source selbst wird zurückgegeben
  */
 function traverse(value, seen) {
     if (!isObject(value) || value[ReactiveFlags.SKIP]) {

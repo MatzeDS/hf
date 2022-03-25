@@ -6,7 +6,9 @@ import {
     readonlyMap,
     reactiveMap,
     shallowReactiveMap,
-    shallowReadonlyMap
+    shallowReadonlyMap,
+    isReadonly,
+    isShallow
 } from "./reactive.js";
 import { TrackOpTypes, TriggerOpTypes } from "./operations.js";
 import {
@@ -90,6 +92,8 @@ function createGetter(isReadonly = false, shallow = false) {
             return !isReadonly;
         } else if (key === ReactiveFlags.IS_READONLY) {
             return isReadonly;
+        } else if (key === ReactiveFlags.IS_SHALLOW) {
+            return shallow;
         } else if (
             key === ReactiveFlags.RAW &&
             receiver === (
@@ -152,9 +156,15 @@ function createSetter(shallow = false) {
     return function set(target, key, value, receiver) {
         let oldValue = target[key];
 
-        if (!shallow) {
-            value = toRaw(value);
-            oldValue = toRaw(oldValue);
+        if (isReadonly(oldValue) && isRef(oldValue) && !isRef(value)) {
+            return false;
+        }
+
+        if (!shallow && !isReadonly(value)) {
+            if (!isShallow(value)) {
+                value = toRaw(value);
+                oldValue = toRaw(oldValue);
+            }
 
             if (!isArray(target) && isRef(oldValue) && !isRef(value)) {
                 oldValue.value = value;
@@ -172,7 +182,7 @@ function createSetter(shallow = false) {
             if (!hadKey) {
                 trigger(target, TriggerOpTypes.ADD, key, value);
             } else if (hasChanged(value, oldValue)) {
-                trigger(target, TriggerOpTypes.SET, key, value, oldValue);
+                trigger(target, TriggerOpTypes.SET, key, value);
             }
         }
 
@@ -189,11 +199,10 @@ function createSetter(shallow = false) {
  */
 function deleteProperty(target, key) {
     const hadKey = hasOwn(target, key);
-    const oldValue = target[key];
     const result = Reflect.deleteProperty(target, key);
 
     if (result && hadKey) {
-        trigger(target, TriggerOpTypes.DELETE, key, undefined, oldValue);
+        trigger(target, TriggerOpTypes.DELETE, key, undefined);
     }
 
     return result;

@@ -8,7 +8,6 @@ import {
     isArray,
     isObject,
     makeMap,
-    isPrototypeOf,
     isFunction
 } from "../shared/utils.js";
 
@@ -124,7 +123,7 @@ export function createVNode(type, props, children = null) {
                 tag = type;
                 type = ELEMENT;
             }
-        } else if (isPrototypeOf(type, BaseComponent) || isPrototypeOf(type, FunctionalComponent)) {
+        } else if (BaseComponent.prototype.isPrototypeOf(type) || FunctionalComponent.prototype.isPrototypeOf(type)) {
             component = type;
             tag = component.tag;
             type = COMPONENT;

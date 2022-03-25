@@ -85,7 +85,7 @@ const ANIMATION = "animation";
  * Die Basis Transition um zwischen Elementen zu wechseln.
  * @extends FunctionalComponent
  */
-export default class BaseTransition extends FunctionalComponent {
+export class BaseTransition extends FunctionalComponent {
     static tag = "base-transition";
 
     static props() {

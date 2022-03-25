@@ -126,7 +126,7 @@ export class ReactiveEffect {
             return this.fn();
         }
 
-        if (!effectStack.includes(this)) {
+        if (!effectStack.length || !effectStack.includes(this)) {
             try {
                 effectStack.push((activeEffect = this));
                 enableTracking();
@@ -190,7 +190,7 @@ function cleanupEffect(effect) {
 /**
  * Erzeugt die Effekt-Funktion für die übergebene Funktion, um diese zu überwachen
  *
- * @param {function(): *} fn - Die Funktion, welche überwacht werden soll
+ * @param {function(): *|ReactiveEffectRunner} fn - Die Funktion, welche überwacht werden soll
  * @param {ReactiveEffectOptions} [options] - Optionen für den Effekt
  * @returns {ReactiveEffectRunner} Die Effekt-Funktion
  */
@@ -407,7 +407,7 @@ export function trigger(target, type, key, newValue) {
  * @param {Dep} dep
  */
 export function triggerEffects(dep) {
-    for (const effect of [...dep]) {
+    for (const effect of isArray(dep) ? dep : [...dep]) {
         if (effect !== activeEffect || effect.allowRecurse) {
             if (effect.scheduler) {
                 effect.scheduler();

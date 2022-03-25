@@ -59,6 +59,8 @@ class ComputedReference {
             }
         });
 
+        this.effect.computed = this;
+        this.effect.active = true;
         /**
          *
          * @type {boolean}

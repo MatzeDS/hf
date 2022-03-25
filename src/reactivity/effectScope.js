@@ -110,7 +110,7 @@ export class EffectScope {
 
 /**
  *
- * @param {boolean} detached
+ * @param {boolean} [detached]
  * @returns {EffectScope}
  */
 export function effectScope(detached) {

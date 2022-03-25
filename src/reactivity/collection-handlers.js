@@ -126,7 +126,7 @@ function set(key, value) {
     if (!hadKey) {
         trigger(target, TriggerOpTypes.ADD, key, value);
     } else if (hasChanged(value, oldValue)) {
-        trigger(target, TriggerOpTypes.SET, key, value, oldValue);
+        trigger(target, TriggerOpTypes.SET, key, value);
     }
 
     return this;
@@ -140,7 +140,7 @@ function set(key, value) {
  */
 function deleteEntry(key) {
     const target = toRaw(this);
-    const { has, get } = getProto(target);
+    const { has } = getProto(target);
     let hadKey = has.call(target, key);
 
     if (!hadKey) {
@@ -148,11 +148,10 @@ function deleteEntry(key) {
         hadKey = has.call(target, key);
     }
 
-    const oldValue = get ? get.call(target, key) : undefined;
     const result = target.delete(key);
 
     if (hadKey) {
-        trigger(target, TriggerOpTypes.DELETE, key, undefined, oldValue);
+        trigger(target, TriggerOpTypes.DELETE, key, undefined);
     }
 
     return result;
@@ -167,7 +166,7 @@ function clear() {
     const result = target.clear();
 
     if (hadItems) {
-        trigger(target, TriggerOpTypes.CLEAR, undefined, undefined, undefined);
+        trigger(target, TriggerOpTypes.CLEAR, undefined, undefined);
     }
 
     return result;
