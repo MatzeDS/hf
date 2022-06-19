@@ -1,0 +1,15 @@
+{
+    "name": "store",
+    "version": "1.0.0",
+    "private": true,
+    "main": "index.js",
+    "type": "module",
+    "repository": {
+        "type": "git",
+        "url": "",
+        "directory": "packages/store"
+    },
+    "dependencies": {
+        "shared": "^1.0.0"
+    }
+}

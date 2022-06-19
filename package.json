@@ -1,10 +1,14 @@
 {
     "name": "hf",
+    "private": true,
     "version": "1.0.0",
     "description": "Hobby Framework",
     "author": "Matthias Schumacher",
     "type": "module",
     "license": "MIT",
+    "workspaces": [
+        "packages/*"
+    ],
     "scripts": {
         "eslint": "eslint src/**",
         "fix": "eslint --fix src/**"

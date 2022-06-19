@@ -1,0 +1,15 @@
+{
+    "name": "router",
+    "version": "1.0.0",
+    "private": true,
+    "main": "index.js",
+    "type": "module",
+    "repository": {
+        "type": "git",
+        "url": "",
+        "directory": "packages/router"
+    },
+    "dependencies": {
+        "shared": "^1.0.0"
+    }
+}

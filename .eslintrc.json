@@ -187,7 +187,7 @@
             { "blankLine": "always", "prev": "*", "next": ["block", "multiline-block-like", "multiline-expression"]}
         ],
         "prefer-const": "error",
-        "prefer-promise-reject-errors": "error",
+        "prefer-promise-reject-errors": "warn",
         "quote-props": ["error", "consistent-as-needed"],
         "quotes": ["error", "double", { "avoidEscape": true, "allowTemplateLiterals": true }],
         "rest-spread-spacing": ["error", "never"],

@@ -1,4 +1,4 @@
 
-export * from "./reactivity/index.js";
-export * from "./router/index.js";
-export * from "./runtime/index.js";
+export * from "../packages/reactivity/index.js";
+export * from "../packages/router/index.js";
+export * from "../packages/runtime/index.js";
