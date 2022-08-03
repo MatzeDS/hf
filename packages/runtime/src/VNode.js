@@ -200,6 +200,7 @@ export class VNode {
         this.type = type;
         this.component = component;
         this.slots = slots;
+        this.props = props;
         this.ref = props?.ref != null ? props.ref : null;
         this.key = props?.key != null ? props.key : null;
     }
