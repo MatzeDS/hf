@@ -38,6 +38,7 @@ const isNonTrackableKeys = makeMap(["__proto__", "__isRef"]);
 
 const builtInSymbols = new Set(
     Object.getOwnPropertyNames(Symbol)
+        .filter(key => key !== "arguments" && key !== "caller")
         .map(key => Symbol[key])
         .filter(isSymbol)
 );
@@ -134,9 +135,7 @@ function createGetter(isReadonly = false, shallow = false) {
         }
 
         if (isRef(res)) {
-            const shouldUnwrap = !targetIsArray || !isIntegerKey(key);
-
-            return shouldUnwrap ? res.value : res;
+            return targetIsArray && isIntegerKey(key) ? res : res.value;
         }
 
         if (isObject(res)) {
@@ -165,10 +164,10 @@ function createSetter(shallow = false) {
             return false;
         }
 
-        if (!shallow && !isReadonly(value)) {
-            if (!isShallow(value)) {
-                value = toRaw(value);
+        if (!shallow) {
+            if (!isShallow(value) && !isReadonly(value)) {
                 oldValue = toRaw(oldValue);
+                value = toRaw(value);
             }
 
             if (!isArray(target) && isRef(oldValue) && !isRef(value)) {

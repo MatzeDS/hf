@@ -1,6 +1,12 @@
 import { isArray, hasChanged } from "../../shared/index.js";
-import { toRaw, isReactive, toReactive } from "./reactive.js";
 import { createDep } from "./dep.js";
+import {
+    toRaw,
+    isReactive,
+    toReactive,
+    isShallow,
+    isReadonly
+} from "./reactive.js";
 import {
     activeEffect,
     shouldTrack,
@@ -159,11 +165,12 @@ class Reference {
      * @param {*} newVal - Der neue Wert
      */
     set value(newVal) {
-        newVal = this.#isShallow ? newVal : toRaw(newVal);
+        const useDirectValue = this.#isShallow || isShallow(newVal) || isReadonly(newVal);
+        newVal = useDirectValue ? newVal : toRaw(newVal);
 
         if (hasChanged(newVal, this.#rawValue)) {
             this.#rawValue = newVal;
-            this.#value = this.#isShallow ? newVal : toReactive(newVal);
+            this.#value = useDirectValue ? newVal : toReactive(newVal);
             triggerRefValue(this);
         }
     }

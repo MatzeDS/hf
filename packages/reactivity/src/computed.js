@@ -43,7 +43,7 @@ class ComputedReference {
      * @type {boolean}
      * @private
      */
-    #isReadonly;
+    #isReadonly = false;
 
     /**
      * Ist die Referenz schreibgeschützt?
